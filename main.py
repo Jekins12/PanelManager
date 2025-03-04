@@ -19,7 +19,7 @@ class MQTTApp:
         ttk.Label(connection_frame, text="Broker:").grid(row=0, column=0, sticky="w")
         self.broker_entry = ttk.Entry(connection_frame)
         self.broker_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
-        self.broker_entry.insert(0, "broker.example.com")
+        self.broker_entry.insert(0, "panel.ekoncept.pl")
 
         # Port
         ttk.Label(connection_frame, text="Port:").grid(row=0, column=2, sticky="w")
@@ -44,7 +44,7 @@ class MQTTApp:
         self.password_entry.grid(row=2, column=3, sticky="ew", padx=5, pady=2)
 
         # Access Code Frame
-        code_frame = ttk.LabelFrame(root, text="Access Code (6 characters)")
+        code_frame = ttk.LabelFrame(root, text="Access Code (6 characters case insensitive)")
         code_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.code_entry = ttk.Entry(code_frame)
         self.code_entry.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
@@ -64,6 +64,10 @@ class MQTTApp:
         ttk.Button(command_frame, text="Update Password",
                    command=self.send_update_password).grid(row=0, column=1, padx=5, pady=2)
 
+        # New "Send Message" button
+        ttk.Button(command_frame, text="Send Message",
+                   command=self.send_message).grid(row=0, column=2, padx=5, pady=2)
+
         # Status Frame
         status_frame = ttk.Frame(root)
         status_frame.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
@@ -79,7 +83,7 @@ class MQTTApp:
         root.grid_columnconfigure(0, weight=1)
         connection_frame.grid_columnconfigure(1, weight=1)
         code_frame.grid_columnconfigure(0, weight=1)
-        command_frame.grid_columnconfigure((0, 1), weight=1)
+        command_frame.grid_columnconfigure((0, 1, 2), weight=1)
 
     def validate_code(self, new_value):
         """Validate access code input (max 6 characters)"""
@@ -171,9 +175,30 @@ class MQTTApp:
         }
         self.publish_command(payload)
 
+    def send_message(self):
+        if not self.connected:
+            messagebox.showerror("Error", "Not connected to broker")
+            return
+
+        code = self.code_entry.get()
+        if len(code) != 6:
+            messagebox.showerror("Error", "Access code must contain 6 characters")
+            return
+
+        user_message = simpledialog.askstring("Send Message", "Enter your message:")
+        if not user_message:
+            return
+
+        payload = {
+            "command": "show_message",
+            "message": user_message
+        }
+        self.publish_command(payload)
+
     def publish_command(self, payload):
         try:
             code = self.code_entry.get()
+            code = code.upper()
             topic = f"service/{code}/configuration"
             json_payload = json.dumps(payload, indent=2)
             self.client.publish(topic, json_payload)
